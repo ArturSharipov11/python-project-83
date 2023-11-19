@@ -1,5 +1,5 @@
 install:
-	poetry install
+	python -m poetry install
 
 
 dev:
