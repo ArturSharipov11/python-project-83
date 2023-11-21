@@ -1,5 +1,5 @@
 install:
-	make install
+	poetry install
 
 
 dev:
