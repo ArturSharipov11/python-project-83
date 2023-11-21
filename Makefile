@@ -1,5 +1,5 @@
 install:
-	pip install --upgrade pip && pip install poetry && make install
+	make install
 
 
 dev:
