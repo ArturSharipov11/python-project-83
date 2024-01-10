@@ -40,7 +40,7 @@
     </table>
   </div>
     <h2 class="mt-5 mb-3">Проверки</h2>
-    <form method="post" action="/urls/1/checks">
+    <form method="post" action="/urls/{{ url.get('id') }}/checks">
     <input type="submit" class="btn btn-primary" value="Запустить проверку">
     </form>
   <div>
@@ -56,6 +56,16 @@
       </tr>
     </thead>
       <tbody>
+      {% for check in checks %}
+      <tr>
+        <td>{{ check.get('id') }}</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>{{ check.get('created_at') }}</td>
+      </tr>
+      {% endfor %}
     </tbody>
     </table>
   </div>

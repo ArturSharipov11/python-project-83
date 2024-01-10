@@ -42,7 +42,7 @@
         {{ url.get('name') }}
       </a>
     </td>
-    <td></td>
+    <td>{{ url.get('max_created_at')|default('', True) }}</td>
     <td></td>
   </tr>
   {% endfor %}

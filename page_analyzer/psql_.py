@@ -28,26 +28,29 @@ def execute_sql_script(filepath):
 def get_urls_from_db():
     with connect() as connection:
         with connection.cursor() as cursor:
-            cursor.execute("SELECT id, name FROM urls")
+            query = """
+                SELECT urls.id, urls.name, MAX(url_checks.created_at) AS max_created_at
+                FROM urls
+                LEFT JOIN url_checks ON urls.id = url_checks.id
+                GROUP BY urls.id, urls.name;
+            """
+            cursor.execute(query)
             columns = [desc[0] for desc in cursor.description]
             rows = cursor.fetchall()
             data = [dict(zip(columns, row)) for row in rows]
-            return list(reversed(data))
+            return list(data)
 
 
 def insert_new_url(url: str) -> tuple | int:
     with connect() as connection:
         with connection.cursor() as cursor:
-            check_query = 'SELECT id FROM urls WHERE name = %s'
+            check_query = 'SELECT id FROM urls WHERE name = %s;'
             cursor.execute(check_query, (url,))
             existing_id = cursor.fetchone()
             if existing_id:
                 return existing_id[0], True
-            insert_query = '''
-            INSERT INTO urls
-            (name, created_at) VALUES (%s, %s) 
-            RETURNING id
-            '''
+            insert_query = '''INSERT INTO urls (name, created_at)
+             VALUES (%s, %s) RETURNING id;'''
             cursor.execute(insert_query, (url, date.today().isoformat()))
             return cursor.fetchone()[0]
 
@@ -55,10 +58,40 @@ def insert_new_url(url: str) -> tuple | int:
 def get_url_by_id(id_):
     with connect() as connection:
         with connection.cursor() as cursor:
-            query = "SELECT * FROM urls WHERE id = %s"
+            query = "SELECT * FROM urls WHERE id = %s;"
             cursor.execute(query, (id_,))
             url = cursor.fetchone()
             if url:
                 column_names = [desc[0] for desc in cursor.description]
                 return dict(zip(column_names, url))
             return None
+
+
+def insert_new_check(url_id: int):
+    insert_query = '''
+    INSERT INTO url_checks (url_id, created_at) VALUES (%s, %s);
+    '''
+    with connect() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(insert_query, (url_id, date.today().isoformat()))
+
+
+def get_url_checks(id_):
+    with connect() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                    SELECT JSONB_BUILD_OBJECT(
+                        'id', id,
+                        'url_id', url_id,
+                        'status_code', status_code,
+                        'h1', h1,
+                        'title', title,
+                        'description', description,
+                        'created_at', created_at
+                    ) AS url_check
+                    FROM url_checks
+                    WHERE url_id = %s;
+                """, (id_,))
+            results = cursor.fetchall()
+            url_check_list = [result[0] for result in results]
+            return reversed(url_check_list)

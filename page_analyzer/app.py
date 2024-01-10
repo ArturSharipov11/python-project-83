@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 import os
 
 
-load_dotenv()
+if "SECRET_KEY" not in os.environ:
+    load_dotenv()
 
 
 ROOT = f'{os.path.dirname(__file__)}/..'
@@ -59,6 +60,12 @@ def url(id):
         'urls/output.html',
         url=url
     )
+
+
+@app.post('/urls/<id>/checks')
+def url_checks(id):
+    db.insert_new_check(id)
+    return redirect(url_for('url', id=id))
 
 
 if __name__ == '__main__':
