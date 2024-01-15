@@ -59,10 +59,10 @@
       {% for check in checks %}
       <tr>
         <td>{{ check.get('id') }}</td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
+        <td>{{ check.get('status_code') }}</td>
+        <td>{{ check.get('h1') }}</td>
+        <td>{{ check.get('title') }}</td>
+        <td>{{ check.get('description') }}</td>
         <td>{{ check.get('created_at') }}</td>
       </tr>
       {% endfor %}
