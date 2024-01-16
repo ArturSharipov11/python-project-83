@@ -1,10 +1,11 @@
 from flask import Flask,render_template, redirect, url_for
 from flask import request,flash, get_flashed_messages
 from validators import url as valid
-from page_analyzer.parser import normalize_url
+from page_analyzer.parser import normalize_url, get_html_from_url, get_seo_info
 from page_analyzer import psql_ as db
 from dotenv import load_dotenv
 import os
+import requests
 
 
 if "SECRET_KEY" not in os.environ:
@@ -56,17 +57,41 @@ def urls_post():
 @app.get('/urls/<id>')
 def url(id):
     url = db.get_url_by_id(id)
+    checks = db.get_url_checks(id)
+    messages = get_flashed_messages(with_categories=True)
     return render_template(
         'urls/output.html',
-        url=url
+        url=url,
+        checks=checks,
+        messages=messages
     )
 
 
 @app.post('/urls/<id>/checks')
 def url_checks(id):
-    db.insert_new_check(id)
-    return redirect(url_for('url', id=id))
+    url_ = db.get_url_by_id(id)
+    url_name = url_.get('name')
+    try:
+        response = requests.get(url_name)
+        response.raise_for_status()
+        text = get_html_from_url(url_name)
+        seo_info = get_seo_info(text)
+        db.insert_new_check(id, response.status_code, seo_info)
+        flash('Страница успешно проверена', 'success')
+    except (
+        requests.RequestException, requests.Timeout,
+        requests.ConnectionError, requests.TooManyRedirects,
+        StatusCodeException
+    ):
+        flash('Произошла ошибка при проверке', 'danger')
+    finally:
+        return redirect(url_for('url', id=id))
 
+
+class StatusCodeException(Exception):
+    def __init__(self, status_code):
+        self.status_code = status_code
+        super().__init__(status_code)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
