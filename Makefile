@@ -13,3 +13,11 @@ start:
 
 build:
 		./build.sh
+
+
+lint:
+		poetry run flake8 page_analyzer
+
+
+test-cov:
+		poetry run pytest --cov=page_analyzer

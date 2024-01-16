@@ -1,5 +1,5 @@
-from flask import Flask,render_template, redirect, url_for
-from flask import request,flash, get_flashed_messages
+from flask import Flask, render_template, redirect, url_for
+from flask import request, flash, get_flashed_messages
 from validators import url as valid
 from page_analyzer.parser import normalize_url, get_html_from_url, get_seo_info
 from page_analyzer import psql_ as db
@@ -92,6 +92,7 @@ class StatusCodeException(Exception):
     def __init__(self, status_code):
         self.status_code = status_code
         super().__init__(status_code)
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

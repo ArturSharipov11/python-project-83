@@ -29,7 +29,8 @@ def get_urls_from_db():
     with connect() as connection:
         with connection.cursor() as cursor:
             query = """
-                SELECT urls.id, urls.name, MAX(url_checks.created_at) AS max_created_at
+                SELECT urls.id, urls.name, MAX(url_checks.created_at)
+                AS max_created_at
                 FROM urls
                 LEFT JOIN url_checks ON urls.id = url_checks.id
                 GROUP BY urls.id, urls.name;
@@ -70,7 +71,7 @@ def get_url_by_id(id_):
 def insert_new_check(url_id: int, status_code: int, seo_info: dict):
     insert_query = '''
     INSERT INTO url_checks
-    (url_id, status_code, h1, title, description, created_at) 
+    (url_id, status_code, h1, title, description, created_at)
     VALUES (%s, %s, %s, %s, %s, %s);
     '''
     with connect() as connection:
