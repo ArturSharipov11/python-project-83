@@ -1,5 +1,4 @@
-DROP SEQUENCE IF EXISTS urls_id_seq CASCADE;
-DROP TABLE IF EXISTS urls CASCADE;
+DROP TABLE IF EXISTS urls;
 DROP TABLE IF EXISTS url_checks;
 
 CREATE TABLE urls (
@@ -17,6 +16,3 @@ CREATE TABLE url_checks (
     description text,
     created_at date
     );
-
-
-CREATE SEQUENCE urls_id_seq START 1;
