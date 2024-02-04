@@ -1,6 +1,12 @@
 import psycopg2
 from datetime import date
 import os
+from dotenv import load_dotenv
+
+
+load_dotenv()
+ROOT = f'{os.path.dirname(__file__)}/..'
+DATABASE_URL = os.getenv('DATABASE_URL')
 
 
 def connect():
@@ -14,27 +20,24 @@ def connect():
         return None
 
 
-def execute_sql_script(filepath):
-    with open(filepath) as f:
+def execute_sql_script():
+    path = f'{ROOT}/database.sql'
+    with open(path) as f:
         script = f.read()
     with connect() as connection:
         with connection.cursor() as cursor:
-            try:
-                cursor.execute(script)
-            except Exception as e:
-                print(e)
+            cursor.execute(script)
 
 
 def get_urls_from_db():
     with connect() as connection:
         with connection.cursor() as cursor:
             query = """
-                SELECT urls.id, urls.name, MAX(url_checks.created_at)
-                AS max_created_at
-                FROM urls
-                LEFT JOIN url_checks ON urls.id = url_checks.id
-                GROUP BY urls.id, urls.name;
-            """
+            SELECT urls.id, urls.name, MAX(url_checks.created_at)
+            AS max_created_at, url_checks.status_code
+            FROM urls
+            LEFT JOIN url_checks ON urls.id = url_checks.url_id
+            GROUP BY urls.id, urls.name, url_checks.status_code"""
             cursor.execute(query)
             columns = [desc[0] for desc in cursor.description]
             rows = cursor.fetchall()
@@ -50,11 +53,12 @@ def insert_new_url(url: str) -> tuple | int:
             existing_id = cursor.fetchone()
             if existing_id:
                 return existing_id[0], True
-            insert_query = '''INSERT INTO urls (name, created_at)
-             VALUES (%s, %s) RETURNING id;'''
+            insert_query = '''
+            INSERT INTO urls (name, created_at)
+            VALUES (%s, %s) RETURNING id;'''
             cursor.execute(insert_query, (url, date.today().isoformat()))
             return cursor.fetchone()[0]
-
+        
 
 def get_url_by_id(id_):
     with connect() as connection:
@@ -69,11 +73,11 @@ def get_url_by_id(id_):
 
 
 def insert_new_check(url_id: int, status_code: int, seo_info: dict):
-    insert_query = '''
+    insert_query = """
     INSERT INTO url_checks
     (url_id, status_code, h1, title, description, created_at)
     VALUES (%s, %s, %s, %s, %s, %s);
-    '''
+    """
     with connect() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
@@ -105,6 +109,9 @@ def get_url_checks(id_):
                     FROM url_checks
                     WHERE url_id = %s;
                 """, (id_,))
+
             results = cursor.fetchall()
+
             url_check_list = [result[0] for result in results]
             return reversed(url_check_list)
+        

@@ -20,6 +20,8 @@ requests = "^2.31.0"
 bs4 = "^0.0.1"
 pytest-postgresql = "^5.0.0"
 psycopg-binary = "^3.1.10"
+psycopg2 = "^2.9.9"
+psycopg = "^3.1.17"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
