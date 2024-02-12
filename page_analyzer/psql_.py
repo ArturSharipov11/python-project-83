@@ -58,7 +58,7 @@ def insert_new_url(url: str) -> tuple | int:
             VALUES (%s, %s) RETURNING id;'''
             cursor.execute(insert_query, (url, date.today().isoformat()))
             return cursor.fetchone()[0]
-        
+
 
 def get_url_by_id(id_):
     with connect() as connection:
@@ -114,4 +114,3 @@ def get_url_checks(id_):
 
             url_check_list = [result[0] for result in results]
             return reversed(url_check_list)
-        

@@ -13,11 +13,11 @@ DATABASE_URL = os.getenv('DATABASE_URL')
     (None, ValueError),
 ])
 def test_connect(db_url, expected_result):
-    if expected_result == ValueError:
+    if db_url is None:
         with pytest.raises(ValueError):
-            db.connect(db_url)
+            db.connect()
     else:
-        connection = db.connect(db_url)
+        connection = db.connect()
         assert connection is not None
 
 

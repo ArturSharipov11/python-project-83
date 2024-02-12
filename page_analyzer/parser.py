@@ -17,15 +17,18 @@ def get_html_text(url: str) -> str | None:
         return None
 
 
-
 def get_seo_info(text: str) -> dict:
     soup = BeautifulSoup(text, 'html.parser')
+
     h1 = soup.find('h1')
     h1_text = h1.text if h1 else ''
+
     title = soup.find('title')
     title_text = title.text if title else ''
+
     meta_tag = soup.find('meta', {'name': 'description'})
     meta_description = meta_tag.get('content') if meta_tag else ''
+
     return {
         'h1': h1_text,
         'title': title_text,

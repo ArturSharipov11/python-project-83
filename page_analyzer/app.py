@@ -55,7 +55,7 @@ def url(id):
     checks = db.get_url_checks(id)
     messages = get_flashed_messages(with_categories=True)
     return render_template(
-        'urls/show.html',
+        'urls/output.html',
         url=url_,
         checks=checks,
         messages=messages
