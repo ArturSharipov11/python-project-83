@@ -43,7 +43,7 @@ def get_urls_from_db():
             rows = cursor.fetchall()
             data = [dict(zip(columns, row)) for row in rows]
             return list(data)
-        
+
 
 def insert_new_url(url: str) -> tuple | int:
     with connect(DATABASE_URL) as connection:
