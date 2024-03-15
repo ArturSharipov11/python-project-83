@@ -1,7 +1,6 @@
 from flask import Flask, render_template, redirect, url_for
 from flask import request, flash, get_flashed_messages
-from validators import url as valid
-from page_analyzer.parser import normalize_url, get_html_text, get_seo_info
+from page_analyzer.parser import normalized_url, get_seo_info, url_validate
 from page_analyzer import psql_ as db
 from dotenv import load_dotenv
 import os
@@ -11,6 +10,7 @@ load_dotenv()
 
 
 app = Flask(__name__)
+DATABASE_URL = os.getenv('DATABASE_URL')
 app.secret_key = os.getenv('SECRET_KEY')
 
 
@@ -20,67 +20,73 @@ def index():
 
 
 @app.get('/urls')
-def urls_get():
-    messages = get_flashed_messages(with_categories=True)
-    urls = db.get_urls_from_db()
+def get_urls():
+    conn = db.get_connection()
+    urls = db.get_urls_fromdb(conn)
+    db.close_connection(conn)
     return render_template(
-        'urls/index.html',
-        messages=messages,
+        'urls.html',
         urls=urls
     )
 
 
 @app.post('/urls')
 def urls_post():
-    data = request.form['url']
-    if not valid(data):
+    conn = db.get_connection()
+    url = request.form.get('url')
+
+    if not url:
+        flash('URL обязателен', 'danger')
+        msgs = get_flashed_messages(with_categories=True)
+        return render_template('index.html', msgs=msgs), 422
+
+    url = normalized_url(url)
+
+    if not url_validate(url):
         flash('Некорректный URL', 'danger')
+        msgs = get_flashed_messages(with_categories=True)
         return render_template(
             'index.html',
-            url=data
+            url=url
         ), 422
-    normal_url = normalize_url(data)
-    id_ = db.insert_new_url(normal_url)
-    if isinstance(id_, tuple):
+    if id := db.get_id(url, conn):
         flash('Страница уже существует', 'info')
-        id_ = id_[0]
-    else:
-        flash('Страница успешно добавлена', 'success')
-    return redirect(url_for('url', id=id_))
+        return redirect(url_for('get_url', id=id))
+
+    id = db.new_url_id(url, conn)
+    db.close_connection(conn)
+    flash('Страница успешно добавлена', 'success')
+    return redirect(url_for('get_url', id=id))
 
 
 @app.get('/urls/<id>')
-def url(id):
-    url_ = db.get_url_by_id(id)
-    checks = db.get_url_checks(id)
+def get_url(id):
+    conn = db.get_connection()
     messages = get_flashed_messages(with_categories=True)
+    url = db.get_url_by_id(id, conn)
+    checks = db.get_url_checks(id, conn)
+    db.close_connection(conn)
     return render_template(
-        'urls/output.html',
-        url=url_,
+        'details.html',
+        url=url,
         checks=checks,
         messages=messages
     )
 
 
 @app.post('/urls/<id>/checks')
-def url_checks(id):
-    url_ = db.get_url_by_id(id)
-    url_name = url_.get('name')
+def get_url_check(id):
+    conn = db.get_connection()
+    url = db.get_url_by_id(id, conn)['name']
     try:
-        response = requests.get(url_name)
-        response.raise_for_status()
+        page_data = get_seo_info(url)
 
-        text = get_html_text(url_name)
-        seo_info = get_seo_info(text)
-
-        db.insert_new_check(id, response.status_code, seo_info)
-
-        flash('Страница успешно проверена', 'success')
-    except (
-        requests.RequestException, requests.Timeout,
-        requests.ConnectionError, requests.TooManyRedirects,
-        requests.HTTPError
-    ):
+    except requests.exceptions.RequestException:
         flash('Произошла ошибка при проверке', 'danger')
-    finally:
-        return redirect(url_for('url', id=id))
+
+    else:
+        db.insert_check(id, page_data, conn)
+        flash('Страница успешно проверена', 'success')
+        return redirect(url_for('get_url', id=id))
+    db.close_connection(conn)
+    return redirect(url_for('get_url', id=id))
