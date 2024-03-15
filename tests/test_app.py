@@ -1,8 +1,5 @@
 import os
 from flask import Flask
-from page_analyzer.psql_ import (
-    insert_new_url, get_url_by_id, get_connection
-)
 import pytest
 from dotenv import load_dotenv
 import page_analyzer
