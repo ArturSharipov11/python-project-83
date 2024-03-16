@@ -1,33 +1,36 @@
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 import requests
-from validators import url as valid
 
 
-def normalized_url(url):
-    url = urlparse(url)
-    return f'{url.scheme.lower()}://{url.netloc.lower()}'
+def normalized_url(url: str) -> str:
+    parsed = urlparse(url)
+    return f'{parsed.scheme}://{parsed.hostname}'
 
 
-def url_validate(url):
-    if len(url) < 255 and valid(url):
-        return True
+def get_html_text(url: str) -> str | None:
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.text
+    except requests.exceptions.RequestException:
+        return None
 
 
-def get_seo_info(url: str) -> dict:
+def get_seo_info(text: str) -> dict:
+    soup = BeautifulSoup(text, 'html.parser')
 
-    page_data = {}
+    h1 = soup.find('h1')
+    h1_text = h1.text if h1 else ''
 
-    r = requests.get(url)
-    r.raise_for_status()
+    title = soup.find('title')
+    title_text = title.text if title else ''
 
-    page_data['status_code'] = r.status_code
-    soup = BeautifulSoup(r.text, 'html.parser')
-    page_data['title'] = soup.select_one('title')
-    page_data['h1'] = soup.select_one('h1')
-    page_data['description'] = soup.select_one('meta[name="description"]')
+    meta_tag = soup.find('meta', {'name': 'description'})
+    meta_description = meta_tag.get('content') if meta_tag else ''
 
-    if page_data['status_code'] != 200:
-        raise requests.exceptions.RequestException
-
-    return page_data
+    return {
+        'h1': h1_text,
+        'title': title_text,
+        'description': meta_description
+    }
