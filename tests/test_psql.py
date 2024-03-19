@@ -1,5 +1,6 @@
 import pytest
 import os
+from tests.root import execute_sql_script
 from page_analyzer import psql as db
 from dotenv import load_dotenv
 

@@ -22,8 +22,10 @@ def index():
 
 @app.get('/urls')
 def get_urls():
+    conn = db.get_connected()
     messages = get_flashed_messages(with_categories=True)
-    urls = db.get_urls_fromdb()
+    urls = db.get_urls_fromdb(conn)
+    db.close_connection(conn)
     return render_template(
         'urls/index.html',
         messages=messages,
@@ -33,6 +35,7 @@ def get_urls():
 
 @app.post('/urls')
 def urls_post():
+    conn = db.get_connected()
     url = request.form['url']
     if not valid(url):
         flash('Некорректный URL', 'danger')
@@ -41,20 +44,24 @@ def urls_post():
             url=url
         ), 422
     normal_url = normalized_url(url)
-    id = db.new_url_id(normal_url)
+    id = db.new_url_id(normal_url, conn)
     if isinstance(id, tuple):
         flash('Страница уже существует', 'info')
         id = id[0]
     else:
         flash('Страница успешно добавлена', 'success')
+    db.close_connection(conn)
     return redirect(url_for('get_url', id=id))
 
 
 @app.get('/urls/<id>')
 def get_url(id):
-    url = db.get_url_by_id(id)
-    checks = db.get_url_checks(id)
+    conn = db.get_connected()
+    url = db.get_url_by_id(id, conn)
+    checks = db.get_url_checks(id, conn)
     messages = get_flashed_messages(with_categories=True)
+    db.close_connection(conn)
+
     return render_template(
         'urls/output.html',
         url=url,
@@ -65,7 +72,8 @@ def get_url(id):
 
 @app.post('/urls/<id>/checks')
 def get_url_checks(id):
-    url = db.get_url_by_id(id)
+    conn = db.get_connected()
+    url = db.get_url_by_id(id, conn)
     url_name = url.get('name')
     try:
         response = requests.get(url_name)
@@ -74,7 +82,7 @@ def get_url_checks(id):
         text = get_html_text(url_name)
         seo_info = get_seo_info(text)
 
-        db.insert_check(id, response.status_code, seo_info)
+        db.insert_check(id, response.status_code, seo_info, conn)
 
         flash('Страница успешно проверена', 'success')
     except (
@@ -84,4 +92,5 @@ def get_url_checks(id):
     ):
         flash('Произошла ошибка при проверке', 'danger')
     finally:
+        db.close_connection(conn)
         return redirect(url_for('get_url', id=id))
