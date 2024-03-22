@@ -1,6 +1,6 @@
 import pytest
 from page_analyzer import app
-from page_analyzer.psql import execute_sql_script
+from .root import execute_sql_script
 
 
 @pytest.fixture

@@ -15,27 +15,27 @@
   {% include 'messages.html' %}
     <main class="flex-grow-1">
       <div class="container-lg mt-3">
-        <h1>Сайт: {{ url.name }}</h1>
+        <h1>Сайт: {{ url.get('name') }}</h1>
         <div class="table-responsive">
           <table class="table table-bordered table-hover text-nowrap" data-test="url">
             <tbody>
               <tr>
                 <td>ID</td>
-                <td>{{ url.id }}</td>
+                <td>{{ url.get('id') }}</td>
               </tr>
               <tr>
                 <td>Имя</td>
-                <td>{{ url.name }}</td>
+                <td>{{ url.get('name') }}</td>
               </tr>
               <tr>
                 <td>Дата создания</td>
-                <td>{{ url.created_at }}</td>
+                <td>{{ url.get('created_at') }}</td>
               </tr>
             </tbody>
           </table>
         </div>
         <h2 class="mt-5 mb-3">Проверки</h2>
-        <form method="post" action="/urls/{{ url.id }}/checks">
+        <form method="post" action="/urls/{{ url.get('id') }}/checks">
           <input type="submit" class="btn btn-primary" value="Запустить проверку">
         </form>
         <div>

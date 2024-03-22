@@ -23,7 +23,7 @@ def test_connect(expected_result):
 
 
 def test_insert_url():
-    db.execute_sql_script()
+    execute_sql_script()
     url = "https://example.com"
     inserted_id = db.new_url_id(url)
     assert isinstance(inserted_id, int)
@@ -33,7 +33,7 @@ def test_insert_url():
 
 
 def test_get_urls_from_db():
-    db.execute_sql_script()
+    execute_sql_script()
     empty_urls = db.get_urls_fromdb()
     assert empty_urls == []
     db.new_url_id("https://example.com")
@@ -42,7 +42,7 @@ def test_get_urls_from_db():
 
 
 def test_insert_and_get_url_check():
-    db.execute_sql_script()
+    execute_sql_script()
     url_id = db.new_url_id("https://example.com")
     status_code = 200
     seo_info = {

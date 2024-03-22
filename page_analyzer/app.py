@@ -13,6 +13,8 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
+DATABASE_URL = os.getenv('DATABASE_URL')
+
 
 
 @app.route("/")
@@ -22,8 +24,8 @@ def index():
 
 @app.get('/urls')
 def get_urls():
-    conn = db.get_connected()
     messages = get_flashed_messages(with_categories=True)
+    conn = db.get_connection()
     urls = db.get_urls_fromdb(conn)
     db.close_connection(conn)
     return render_template(
@@ -35,8 +37,8 @@ def get_urls():
 
 @app.post('/urls')
 def urls_post():
-    conn = db.get_connected()
     url = request.form['url']
+    conn = db.get_connection()
     if not valid(url):
         flash('Некорректный URL', 'danger')
         return render_template(
@@ -54,14 +56,14 @@ def urls_post():
     return redirect(url_for('get_url', id=id))
 
 
-@app.get('/urls/<id>')
+@app.route('/urls/<int:id>')
 def get_url(id):
-    conn = db.get_connected()
+    conn = db.get_connection()
+    messages = get_flashed_messages(with_categories=True)
     url = db.get_url_by_id(id, conn)
     checks = db.get_url_checks(id, conn)
-    messages = get_flashed_messages(with_categories=True)
+    conn.commit()
     db.close_connection(conn)
-
     return render_template(
         'urls/output.html',
         url=url,
@@ -72,7 +74,7 @@ def get_url(id):
 
 @app.post('/urls/<id>/checks')
 def get_url_checks(id):
-    conn = db.get_connected()
+    conn = db.get_connection()
     url = db.get_url_by_id(id, conn)
     url_name = url.get('name')
     try:
@@ -82,7 +84,7 @@ def get_url_checks(id):
         text = get_html_text(url_name)
         seo_info = get_seo_info(text)
 
-        db.insert_check(id, response.status_code, seo_info, conn)
+        db.insert_check(id, response.status_code, seo_info)
 
         flash('Страница успешно проверена', 'success')
     except (
@@ -91,6 +93,7 @@ def get_url_checks(id):
         requests.HTTPError
     ):
         flash('Произошла ошибка при проверке', 'danger')
+    
     finally:
         db.close_connection(conn)
         return redirect(url_for('get_url', id=id))

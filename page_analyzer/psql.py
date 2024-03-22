@@ -1,6 +1,7 @@
-import psycopg2
-from datetime import date
 import os
+import psycopg2
+import psycopg2.extras
+from datetime import date
 from dotenv import load_dotenv
 
 
@@ -9,7 +10,7 @@ ROOT = f'{os.path.dirname(__file__)}/..'
 DATABASE_URL = os.getenv('DATABASE_URL')
 
 
-def get_connected():
+def get_connection():
     return psycopg2.connect(DATABASE_URL)
 
 
@@ -17,13 +18,13 @@ def close_connection(connection):
     connection.close()
 
 
-def execute_sql_script():
+def execute_sql_script(conn):
     path = f'{ROOT}/database.sql'
     with open(path) as f:
         script = f.read()
-    with get_connected() as connection:
-        with connection.cursor() as cursor:
-            cursor.execute(script)
+    with conn.cursor() as cursor:
+        cursor.execute(script)
+
 
 
 def get_urls_fromdb(conn):
@@ -55,15 +56,12 @@ def new_url_id(url: str, conn) -> tuple | int:
         return cursor.fetchone()[0]
 
 
-def get_url_by_id(id_, conn):
-    with conn.cursor() as cursor:
-        query = "SELECT * FROM urls WHERE id = %s;"
-        cursor.execute(query, (id_, ))
-        url = cursor.fetchone()
-        if url:
-            column_names = [desc[0] for desc in cursor.description]
-            return dict(zip(column_names, url))
-        return None
+def get_url_by_id(id, conn):
+    with conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor) as cursor:
+        cursor.execute("SELECT * FROM urls WHERE id=%s", (id,))
+        result = cursor.fetchone()
+        print(result)
+        return result
 
 
 def insert_check(url_id: int, status_code: int, seo_info: dict, conn):
@@ -89,18 +87,18 @@ def insert_check(url_id: int, status_code: int, seo_info: dict, conn):
 def get_url_checks(id_, conn):
     with conn.cursor() as cursor:
         cursor.execute("""
-            SELECT JSONB_BUILD_OBJECT(
-                'id', id,
-                'url_id', url_id,
-                'status_code', status_code,
-                'h1', h1,
-                'title', title,
-                'description', description,
-                'created_at', created_at
-            ) AS url_check
-            FROM url_checks
-            WHERE url_id = %s;
-        """, (id_,))
+                SELECT JSONB_BUILD_OBJECT(
+                    'id', id,
+                    'url_id', url_id,
+                    'status_code', status_code,
+                    'h1', h1,
+                    'title', title,
+                    'description', description,
+                    'created_at', created_at
+                ) AS url_check
+                FROM url_checks
+                WHERE url_id = %s;
+                """, (id_,))
 
         results = cursor.fetchall()
 

@@ -1,5 +1,5 @@
 from page_analyzer.app import app
-from page_analyzer.psql import execute_sql_script, ROOT
+from tests.root import execute_sql_script, ROOT
 
 
 __all__ = [
