@@ -1,6 +1,7 @@
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 import requests
+from validators import url as valid
 
 
 def normalized_url(url: str) -> str:
@@ -17,20 +18,25 @@ def get_html_text(url: str) -> str | None:
         return None
 
 
-def get_seo_info(text: str) -> dict:
-    soup = BeautifulSoup(text, 'html.parser')
+def url_parse(url):
 
-    h1 = soup.find('h1')
-    h1_text = h1.text if h1 else ''
+    page_data = {}
 
-    title = soup.find('title')
-    title_text = title.text if title else ''
+    r = requests.get(url)
+    r.raise_for_status()
 
-    meta_tag = soup.find('meta', {'name': 'description'})
-    meta_description = meta_tag.get('content') if meta_tag else ''
+    page_data['status_code'] = r.status_code
+    soup = BeautifulSoup(r.text, 'html.parser')
+    page_data['title'] = soup.select_one('title')
+    page_data['h1'] = soup.select_one('h1')
+    page_data['description'] = soup.select_one('meta[name="description"]')
 
-    return {
-        'h1': h1_text,
-        'title': title_text,
-        'description': meta_description
-    }
+    if page_data['status_code'] != 200:
+        raise requests.exceptions.RequestException
+
+    return page_data
+
+
+def url_validate(url):
+    if len(url) < 255 and valid(url):
+        return True

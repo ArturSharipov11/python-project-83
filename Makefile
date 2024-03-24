@@ -17,11 +17,3 @@ build:
 
 lint:
 		poetry run flake8 page_analyzer
-
-
-test-cov:
-		poetry run pytest --cov=page_analyzer
-
-
-test-coverage:
-		poetry run pytest --cov-report xml --cov=page_analyzer
