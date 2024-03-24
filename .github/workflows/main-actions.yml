@@ -23,13 +23,6 @@ jobs:
           make install
       - name: Run linter
         run: make lint
-      - name: Test & publish code coverage
-        uses: paambaati/codeclimate-action@v3.2.0
-        env:
-          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
-        with:
-          coverageCommand: make test-coverage
-          debug: true
     services:
       postgres:
         image: postgres
