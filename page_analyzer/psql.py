@@ -44,7 +44,8 @@ def get_url_by_id(conn, id):
 def new_url_id(conn, url):
     with conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor) as curs:
         curs.execute('''INSERT INTO urls (name, created_at)
-                     VALUES (%s, %s) RETURNING id;''', (url, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                     VALUES (%s, %s) RETURNING id;''', (url,
+                     datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
         return curs.fetchone().id
 
 
@@ -89,4 +90,5 @@ def insert_check(conn, check):
                       check['status'],
                       check['head'],
                       check['title'],
-                      check['description'], datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                      check['description'],
+                      datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
