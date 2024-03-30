@@ -5,9 +5,10 @@ from validators import url as valid
 import validators
 
 
-def normalized_url(url: str) -> str:
-    parsed = urlparse(url)
-    return f'{parsed.scheme}://{parsed.hostname}'
+def normalized_url(url):
+    url_parse = urlparse(url)
+    format_url = f'{url_parse.scheme}://{url_parse.netloc}'
+    return format_url
 
 
 def get_html_text(url: str) -> str | None:
