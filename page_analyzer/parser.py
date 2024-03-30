@@ -22,7 +22,7 @@ def get_html_text(url: str) -> str | None:
 
 def url_parse(url):
 
-    result = {'status': None,
+    result = {'status_code': None,
               'head': None,
               'title': None,
               'description': None}
@@ -30,7 +30,7 @@ def url_parse(url):
         request = requests.get(url)
         get_status = request.status_code
         soup = BeautifulSoup(request.content, 'html5lib')
-        result['status'] = get_status
+        result['status_code'] = get_status
         result['head'] = soup.h1.string if soup.h1 else None
         result['title'] = soup.title.string if soup.title else None
         for link in soup.find_all('meta'):
