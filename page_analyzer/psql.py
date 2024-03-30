@@ -85,7 +85,7 @@ def insert_check(conn, check):
                      h1, title, description)
                      VALUES (%s, %s, %s, %s, %s);''',
                      (check['url_id'],
-                      check['status'],
+                      check['status_code'],
                       check['head'],
                       check['title'],
                       check['description'],))
