@@ -1,10 +1,9 @@
 from flask import Flask, render_template, redirect, url_for
 from flask import request, flash, get_flashed_messages
-from page_analyzer.parser import normalized_url, url_parse, url_validate
+from page_analyzer.parser import normalized_url, url_parse, get_error
 from page_analyzer import psql as db
 from dotenv import load_dotenv
 import os
-import requests
 
 
 load_dotenv()
@@ -22,64 +21,60 @@ def index():
 
 @app.get('/urls')
 def get_urls():
-    conn = db.get_connection()
-    urls = db.get_urls_fromdb(conn)
+    with db.get_connection(DATABASE_URL) as conn:
+        urls = db.get_urls(conn)
     db.close_connection(conn)
     return render_template('urls/index.html', urls=urls)
 
 
 @app.post('/urls')
 def urls_post():
-    conn = db.get_connection()
     url = request.form.get('url')
-
-    if not url:
-        flash('URL обязателен', 'danger')
-        msgs = get_flashed_messages(with_categories=True)
-        return render_template('index.html', msgs=msgs), 422
-
-    url = normalized_url(url)
-
-    if not url_validate(url):
-        flash('Некорректный URL', 'danger')
-        msgs = get_flashed_messages(with_categories=True)
-        return render_template('index.html', msgs=msgs), 422
-
-    if id := db.get_id(url, conn):
-        flash('Страница уже существует', 'info')
-        return redirect(url_for('get_url', id=id))
-
-    id = db.new_url_id(url, conn)
+    validation_error = get_error(url)
+    formatted_url = normalized_url(url)
+    if validation_error:
+        flash(*validation_error)
+        messages = get_flashed_messages(with_categories=True)
+        return render_template('index.html',
+                               messages=messages,
+                               value_url=url), 422
+    with db.get_connection(DATABASE_URL) as conn:
+        url_info = db.get_id(conn, formatted_url)
+        if not url_info:
+            url_id = db.new_url_id(conn, formatted_url)
+            flash('Страница успешно добавлена', 'success')
+        else:
+            url_id = url_info.id
+            flash('Страница уже существует', 'success')
     db.close_connection(conn)
-    flash('Страница успешно добавлена', 'success')
-    return redirect(url_for('get_url', id=id))
+    return redirect(url_for('get_url',
+                            id=url_id))
 
 
 @app.route('/urls/<int:id>')
 def get_url(id):
-    conn = db.get_connection()
-    msgs = get_flashed_messages(with_categories=True)
-    url = db.get_url_by_id(id, conn)
-    checks = db.get_url_check(id, conn)
+    with db.get_connection(DATABASE_URL) as conn:
+        checks = db.get_url_check(conn, id)
+        url = db.get_url_by_id(conn, id)
+        msgs = get_flashed_messages(with_categories=True)
     db.close_connection(conn)
-
     return render_template('urls/output.html',
-                           url=url, checks=checks, msgs=msgs)
+                           msgs=msgs,
+                           url=url,
+                           checks=checks)
 
 
 @app.route('/urls/<int:id>/checks', methods=['POST'])
 def get_url_checks(id):
-    conn = db.get_connection()
-    url = db.get_url_by_id(id, conn)['name']
-    try:
-        page_data = url_parse(url)
-
-    except requests.exceptions.RequestException:
-        flash('Произошла ошибка при проверке', 'danger')
-
-    else:
-        db.insert_check(id, page_data, conn)
-        flash('Страница успешно проверена', 'success')
-        return redirect(url_for('get_url', id=id))
+    with db.get_connection(DATABASE_URL) as conn:
+        url_info = db.get_url_by_id(conn, id)
+        with db.get_connection(DATABASE_URL) as conn:
+            check = url_parse(url_info.name)
+            if check['status'] == 200:
+                check['url_id'] = id
+                db.insert_check(conn, check)
+                flash('Страница успешно проверена', 'success')
+            else:
+                flash('Произошла ошибка при проверке', 'danger')
     db.close_connection(conn)
     return redirect(url_for('get_url', id=id))

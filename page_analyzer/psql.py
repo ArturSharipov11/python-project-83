@@ -1,86 +1,91 @@
-import os
-import psycopg2
 import psycopg2.extras
-from datetime import date
-from dotenv import load_dotenv
+import psycopg2
+from contextlib import contextmanager
 
 
-load_dotenv()
-DATABASE_URL = os.getenv('DATABASE_URL')
-
-
-def get_connection():
-    return psycopg2.connect(DATABASE_URL)
+@contextmanager
+def get_connection(db_url):
+    try:
+        connection = psycopg2.connect(db_url)
+        yield connection
+    except Exception:
+        if connection:
+            connection.rollback()
+        raise
+    else:
+        if connection:
+            connection.commit()
 
 
 def close_connection(connection):
-    connection.close()
+    if connection:
+        connection.close()
 
 
-def get_id(url, conn):
-    with conn.cursor(
-            cursor_factory=psycopg2.extras.DictCursor) as cur:
-        cur.execute("SELECT id FROM urls WHERE name=%s", (url,))
-        result = cur.fetchone()
-        id = result['id'] if result else None
-
-        return id
-
-
-def get_url_by_id(id, conn):
-    with conn.cursor(
-            cursor_factory=psycopg2.extras.DictCursor) as cursor:
-        cursor.execute("SELECT * FROM urls WHERE id=%s", (id,))
-
-        return cursor.fetchone()
+def get_id(conn, url):
+    with conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor) as curs:
+        curs.execute('''SELECT id, name, created_at
+                     FROM urls
+                     WHERE name=%s;''', (url,))
+        url_info = curs.fetchone()
+        if url_info is not None:
+            return url_info
 
 
-def new_url_id(url, conn):
-    with conn.cursor(
-            cursor_factory=psycopg2.extras.DictCursor) as cur:
-        cur.execute('INSERT INTO urls (name, created_at)'
-                    'VALUES (%s, %s)',
-                    (url, date.today().isoformat())
-                    )
-        conn.commit()
-
-        id = get_id(url, conn)
-        return id
+def get_url_by_id(conn, id):
+    with conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor) as curs:
+        curs.execute('''SELECT id, name, created_at
+                     FROM urls
+                     WHERE id=%s;''', (id,))
+        return curs.fetchone()
 
 
-def get_url_check(id, conn):
-    with conn.cursor(
-            cursor_factory=psycopg2.extras.DictCursor) as cursor:
-        cursor.execute("SELECT * FROM url_checks WHERE url_id=%s", (id,))
-
-        return cursor.fetchall()
-
-
-def get_urls_fromdb(conn):
-    with conn.cursor(
-            cursor_factory=psycopg2.extras.DictCursor) as cur:
-        cur.execute('''SELECT DISTINCT ON (urls.id) urls.id, name,
-        url_checks.created_at, url_checks.status_code
-        FROM urls
-        LEFT JOIN url_checks ON urls.id = url_checks.url_id
-        ORDER BY urls.id DESC, url_checks.id DESC;''')
-
-        return cur.fetchall()
+def new_url_id(conn, url):
+    with conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor) as curs:
+        curs.execute('''INSERT INTO urls (name)
+                     VALUES (%s) RETURNING id;''', (url,))
+        return curs.fetchone().id
 
 
-def insert_check(id, page_data, conn):
-    status_code = page_data['status_code']
-    h1 = page_data['h1']
-    title = page_data['title']
-    description = page_data['description']
-    with conn.cursor(
-            cursor_factory=psycopg2.extras.DictCursor) as cur:
-        cur.execute('INSERT INTO url_checks (url_id, status_code, '
-                    'h1, title, description, created_at)'
-                    'VALUES (%s, %s, %s, %s, %s, %s)',
-                    ((id, status_code,
-                      h1.string if h1 else None,
-                      title.string if title else None,
-                      description['content'] if description else None,
-                      date.today().isoformat())))
-        conn.commit()
+def get_url_check(conn, id):
+    with conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor) as curs:
+        curs.execute('''SELECT id, status_code, h1,
+                     title, description, created_at
+                     FROM url_checks
+                     WHERE url_id=%s
+                     ORDER BY id DESC;''', (id,))
+        return curs.fetchall()
+
+
+def get_urls(conn):
+    with conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor) as curs:
+        curs.execute('SELECT id, name FROM urls ORDER BY id DESC;')
+        urls = curs.fetchall()
+        curs.execute('''SELECT url_id, created_at, status_code
+                     FROM url_checks
+                     ORDER BY created_at DESC;''')
+        url_checks = curs.fetchall()
+        if url_checks:
+            result = []
+            for url in urls:
+                len_result = len(result)
+                for check in url_checks:
+                    if url.id == check.url_id:
+                        result.append(url._asdict() | check._asdict())
+                        break
+                if len(result) == len_result:
+                    result.append(url._asdict())
+            return result
+        return urls
+
+
+def insert_check(conn, check):
+    with conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor) as curs:
+        curs.execute('''INSERT INTO url_checks (url_id, status_code,
+                     h1, title, description)
+                     VALUES (%s, %s, %s, %s, %s);''',
+                     (check['url_id'],
+                      check['status'],
+                      check['head'],
+                      check['title'],
+                      check['description'],))
