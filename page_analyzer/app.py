@@ -70,7 +70,7 @@ def get_url_checks(id):
         url_info = db.get_url_by_id(conn, id)
         with db.get_connection(DATABASE_URL) as conn:
             check = url_parse(url_info.name)
-            if check['status_code'] == 200:
+            if check['status'] == 200:
                 check['url_id'] = id
                 db.insert_check(conn, check)
                 flash('Страница успешно проверена', 'success')

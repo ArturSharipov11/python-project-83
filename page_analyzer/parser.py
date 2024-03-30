@@ -11,18 +11,9 @@ def normalized_url(url):
     return format_url
 
 
-def get_html_text(url: str) -> str | None:
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.text
-    except requests.exceptions.RequestException:
-        return None
-
-
 def url_parse(url):
 
-    result = {'status_code': None,
+    result = {'status': None,
               'head': None,
               'title': None,
               'description': None}
@@ -30,7 +21,7 @@ def url_parse(url):
         request = requests.get(url)
         get_status = request.status_code
         soup = BeautifulSoup(request.content, 'html5lib')
-        result['status_code'] = get_status
+        result['status'] = get_status
         result['head'] = soup.h1.string if soup.h1 else None
         result['title'] = soup.title.string if soup.title else None
         for link in soup.find_all('meta'):

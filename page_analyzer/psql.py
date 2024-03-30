@@ -1,6 +1,7 @@
 import psycopg2.extras
 import psycopg2
 from contextlib import contextmanager
+from datetime import datetime
 
 
 @contextmanager
@@ -42,8 +43,8 @@ def get_url_by_id(conn, id):
 
 def new_url_id(conn, url):
     with conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor) as curs:
-        curs.execute('''INSERT INTO urls (name)
-                     VALUES (%s) RETURNING id;''', (url,))
+        curs.execute('''INSERT INTO urls (name, created_at)
+                     VALUES (%s, %s) RETURNING id;''', (url, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
         return curs.fetchone().id
 
 
@@ -82,10 +83,10 @@ def get_urls(conn):
 def insert_check(conn, check):
     with conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor) as curs:
         curs.execute('''INSERT INTO url_checks (url_id, status_code,
-                     h1, title, description)
-                     VALUES (%s, %s, %s, %s, %s);''',
+                     h1, title, description, created_at)
+                     VALUES (%s, %s, %s, %s, %s, %s);''',
                      (check['url_id'],
-                      check['status_code'],
+                      check['status'],
                       check['head'],
                       check['title'],
-                      check['description'],))
+                      check['description'], datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
